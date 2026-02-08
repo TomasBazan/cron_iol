@@ -1,0 +1,33 @@
+name: Monitor Cauciones IOL
+
+on:
+  schedule:
+    # (Equivale a 10:30, 11:30 ... 16:30 hora Argentina)
+    - cron: '30 13-19 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+
+    - name: Instalar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Instalar dependencias
+      run: |
+        pip install -r requirements.txt
+
+    - name: Ejecutar Monitor
+      env:
+        # Aquí inyectamos los secretos guardados en GitHub al script
+        IOL_USER: ${{ secrets.IOL_USER }}
+        IOL_PASS: ${{ secrets.IOL_PASS }}
+        TG_TOKEN: ${{ secrets.TG_TOKEN }}
+        TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+      run: python cron4.py
