@@ -30,7 +30,6 @@ def obtener_token():
         return None
 
 def chequear_mercado(token):
-    # Usamos el endpoint ESTABLE que ya confirmaste que funciona (cron2.py)
     endpoint = "/api/v2/Cotizaciones/cauciones/argentina/todos"
     headers = {"Authorization": f"Bearer {token}"}
 
