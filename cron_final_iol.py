@@ -7,7 +7,7 @@ IOL_PASS = os.environ.get("IOL_PASS")
 TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 
-TNA_OBJETIVO = 10.0  # Avisar si la tasa supera este valor
+TNA_OBJETIVO = 30.0  # Avisar si la tasa supera este valor
 
 URL_BASE = "https://api.invertironline.com"
 
