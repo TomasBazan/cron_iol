@@ -16,22 +16,26 @@ TNA_OBJETIVO = 30.0  # Avisar si la tasa supera este valor
 
 URL_BASE = "https://api.invertironline.com"
 
-def guardar_en_sheets(tasa_actual, tasa_maxima):
+def guardar_en_sheets(tasa_actual):
     if not GOOGLE_SHEET_NAME or not GOOGLE_CREDENTIALS_JSON:
         return
 
     try:
         # Parse credentials from string
         creds_dict = json.loads(GOOGLE_CREDENTIALS_JSON)
-        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        # We need drive scope to find the sheet by name (client.open)
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         client = gspread.authorize(creds)
         
         sheet = client.open(GOOGLE_SHEET_NAME).sheet1
         
-        # Timestamp, TNA Actual, TNA Max
+        # Timestamp, TNA Actual
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([timestamp, tasa_actual, tasa_maxima])
+        sheet.append_row([timestamp, tasa_actual])
         print("Datos guardados en Google Sheets.")
         
     except Exception as e:
@@ -77,23 +81,18 @@ def chequear_mercado(token):
         item = lista[0] # Tomamos el general
         
         tasa_actual = item.get('ultimoPrecio', 0)  # Última operada
-        tasa_maxima = item.get('maximo', 0)        # Pico del día
         
-        msg_log = f"TNA Actual: {tasa_actual}% | Máx Día: {tasa_maxima}%"
+        msg_log = f"TNA Actual: {tasa_actual}%"
         print(msg_log)
 
         # Guardar historial
-        guardar_en_sheets(tasa_actual, tasa_maxima)
+        guardar_en_sheets(tasa_actual)
 
         # --- LÓGICA DE ALERTA ---
         # 1. Si la tasa actual es buena, avisamos YA.
         if tasa_actual >= TNA_OBJETIVO:
             enviar_telegram(f"🔥 ALERTA IOL: Tasa actual {tasa_actual}% (Superior a {TNA_OBJETIVO}%)")
-            
-        # 2. Si la tasa actual bajó, pero hubo un pico alto reciente (gap de oportunidad)
-        elif tasa_maxima >= (TNA_OBJETIVO + 2.0):
-            # Solo avisamos si la diferencia es grande, para estar atentos
-            enviar_telegram(f"👀 OJO: Hubo tasas de {tasa_maxima}% hoy (Ahora {tasa_actual}%)")
+
 
     except Exception as e:
         print(f"Error chequeo: {e}")
