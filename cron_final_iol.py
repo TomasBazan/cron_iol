@@ -1,15 +1,41 @@
 import requests
 import datetime
 import os
+import json
+import gspread
+from google.oauth2.service_account import Credentials
 
 IOL_USER = os.environ.get("IOL_USER")
 IOL_PASS = os.environ.get("IOL_PASS")
 TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
+GOOGLE_SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME")
+GOOGLE_CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDENTIALS_JSON")
 
 TNA_OBJETIVO = 30.0  # Avisar si la tasa supera este valor
 
 URL_BASE = "https://api.invertironline.com"
+
+def guardar_en_sheets(tasa_actual, tasa_maxima):
+    if not GOOGLE_SHEET_NAME or not GOOGLE_CREDENTIALS_JSON:
+        return
+
+    try:
+        # Parse credentials from string
+        creds_dict = json.loads(GOOGLE_CREDENTIALS_JSON)
+        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client = gspread.authorize(creds)
+        
+        sheet = client.open(GOOGLE_SHEET_NAME).sheet1
+        
+        # Timestamp, TNA Actual, TNA Max
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        sheet.append_row([timestamp, tasa_actual, tasa_maxima])
+        print("Datos guardados en Google Sheets.")
+        
+    except Exception as e:
+        print(f"Error guardando en Sheets: {e}")
 
 def enviar_telegram(mensaje):
     if TG_TOKEN and TG_CHAT_ID:
@@ -55,6 +81,9 @@ def chequear_mercado(token):
         
         msg_log = f"TNA Actual: {tasa_actual}% | Máx Día: {tasa_maxima}%"
         print(msg_log)
+
+        # Guardar historial
+        guardar_en_sheets(tasa_actual, tasa_maxima)
 
         # --- LÓGICA DE ALERTA ---
         # 1. Si la tasa actual es buena, avisamos YA.
