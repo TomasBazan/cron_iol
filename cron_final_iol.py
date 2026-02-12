@@ -1,4 +1,4 @@
-import requestimport requests
+import requests
 import datetime
 import os
 import json
@@ -192,4 +192,4 @@ def chequear_mercado(token):
 if __name__ == "__main__":
     token = obtener_token()
     if token:
-        chequear_mercado(token)chequear_mercado(token)
+        chequear_mercado(token)
