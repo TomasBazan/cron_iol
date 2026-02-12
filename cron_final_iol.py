@@ -37,45 +37,58 @@ def get_google_client():
 
 def gestionar_estado(client, tasa_actual=None, actualizar=False):
     """
-    Lee o guarda el estado del bot (Memoria) en una hoja llamada 'ESTADO_BOT'.
-    Estructura en Sheets: A1: 'TRACKING' (TRUE/FALSE), B1: 'MAX_PEAK' (Float)
+    Maneja la memoria del bot en la hoja 'ESTADO_BOT'.
+    CORREGIDO para gspread v6.0+
     """
     if not client or not GOOGLE_SHEET_NAME:
+        print("⚠️ Cliente o Nombre de hoja vacíos.")
         return {"tracking": False, "max_peak": 0.0}
 
     try:
         sh = client.open(GOOGLE_SHEET_NAME)
-        # Intentamos abrir la hoja de estado, si no existe la creamos
+        
+        # Intentamos abrir la hoja de estado, o crearla si no existe
         try:
             worksheet = sh.worksheet("ESTADO_BOT")
-        except:
-            worksheet = sh.add_worksheet(title="ESTADO_BOT", rows=1, cols=2)
-            worksheet.update('A1:B1', [['FALSE', 0.0]])
+        except gspread.WorksheetNotFound:
+            print("ℹ️ Creando hoja ESTADO_BOT...")
+            worksheet = sh.add_worksheet(title="ESTADO_BOT", rows=2, cols=2)
+            # INICIALIZACIÓN: Usamos named arguments para evitar errores
+            worksheet.update(range_name='A1:B1', values=[['FALSE', 0.0]])
 
-        # SI ES LECTURA
+        # --- LECTURA ---
         if not actualizar:
+            # .get() sigue funcionando igual
             vals = worksheet.get('A1:B1')
             if not vals:
                 return {"tracking": False, "max_peak": 0.0}
             
-            # Parseamos los valores
-            tracking_str = vals[0][0] if len(vals[0]) > 0 else "FALSE"
-            max_peak_str = vals[0][1] if len(vals[0]) > 1 else "0"
+            # Parseo seguro de datos
+            tracking_str = vals[0][0] if len(vals) > 0 and len(vals[0]) > 0 else "FALSE"
+            max_peak_str = vals[0][1] if len(vals) > 0 and len(vals[0]) > 1 else "0"
             
+            # Convertimos strings de Sheets a tipos de Python
             return {
                 "tracking": tracking_str == "TRUE",
-                "max_peak": float(max_peak_str)
+                "max_peak": float(max_peak_str.replace(',', '.')) # Fix por si Excel usa comas
             }
         
-        # SI ES ESCRITURA (Actualizar)
+        # --- ESCRITURA ---
         else:
             tracking_val = "TRUE" if tasa_actual['tracking'] else "FALSE"
-            worksheet.update('A1:B1', [[tracking_val, tasa_actual['max_peak']]])
-            print(f"Estado actualizado: Tracking={tracking_val}, Peak={tasa_actual['max_peak']}")
+            peak_val = tasa_actual['max_peak']
+            
+            # AQUÍ ESTABA EL ERROR:
+            # Usamos range_name= y values= explícitamente.
+            worksheet.update(
+                range_name='A1:B1', 
+                values=[[tracking_val, peak_val]]
+            )
+            print(f"✅ Estado guardado en Sheets: Tracking={tracking_val}, Peak={peak_val}")
 
     except Exception as e:
-        print(f"Error gestionando estado en Sheets: {e}")
-        return {"tracking": False, "max_peak": 0.0} # Fallback seguro
+        print(f"❌ Error CRÍTICO en Sheets: {e}")
+        return {"tracking": False, "max_peak": 0.0}
 
 def guardar_historial(client, tasa_actual):
     """Guarda el log histórico en la hoja principal"""
