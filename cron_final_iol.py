@@ -135,7 +135,7 @@ def chequear_mercado(token):
         # --- LÓGICA INTELIGENTE (TRAILING PEAK) ---
         
         # 2. Recuperar memoria de la hora anterior
-        estado = gestionarl_estado(client, actualizar=False)
+        estado = gestionar_estado(client, actualizar=False)
         tracking = estado['tracking']
         max_peak = estado['max_peak']
 
