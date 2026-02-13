@@ -5,7 +5,6 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- CONFIGURACIÓN ---
 IOL_USER = os.environ.get("IOL_USER")
 IOL_PASS = os.environ.get("IOL_PASS")
 TG_TOKEN = os.environ.get("TG_TOKEN")
@@ -15,9 +14,8 @@ GOOGLE_CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDENTIALS_JSON")
 
 URL_BASE = "https://api.invertironline.com"
 
-# --- VARIABLES DE ESTRATEGIA (Opción 3) ---
-UMBRAL_ACTIVACION = 30.0  # Empezamos a mirar si supera esto
-RETROCESO_CONFIRMACION = 2.0  # Si baja X puntos desde el pico -> COMPRAR
+UMBRAL_ACTIVACION = 30.0
+RETROCESO_CONFIRMACION = 1.5
 
 def get_google_client():
     if not GOOGLE_CREDENTIALS_JSON:
@@ -47,39 +45,30 @@ def gestionar_estado(client, tasa_actual=None, actualizar=False):
     try:
         sh = client.open(GOOGLE_SHEET_NAME)
         
-        # Intentamos abrir la hoja de estado, o crearla si no existe
         try:
             worksheet = sh.worksheet("ESTADO_BOT")
         except gspread.WorksheetNotFound:
             print("ℹ️ Creando hoja ESTADO_BOT...")
             worksheet = sh.add_worksheet(title="ESTADO_BOT", rows=2, cols=2)
-            # INICIALIZACIÓN: Usamos named arguments para evitar errores
             worksheet.update(range_name='A1:B1', values=[['FALSE', 0.0]])
 
-        # --- LECTURA ---
         if not actualizar:
-            # .get() sigue funcionando igual
             vals = worksheet.get('A1:B1')
             if not vals:
                 return {"tracking": False, "max_peak": 0.0}
             
-            # Parseo seguro de datos
             tracking_str = vals[0][0] if len(vals) > 0 and len(vals[0]) > 0 else "FALSE"
             max_peak_str = vals[0][1] if len(vals) > 0 and len(vals[0]) > 1 else "0"
             
-            # Convertimos strings de Sheets a tipos de Python
             return {
                 "tracking": tracking_str == "TRUE",
                 "max_peak": float(max_peak_str.replace(',', '.')) # Fix por si Excel usa comas
             }
         
-        # --- ESCRITURA ---
         else:
             tracking_val = "TRUE" if tasa_actual['tracking'] else "FALSE"
             peak_val = tasa_actual['max_peak']
             
-            # AQUÍ ESTABA EL ERROR:
-            # Usamos range_name= y values= explícitamente.
             worksheet.update(
                 range_name='A1:B1', 
                 values=[[tracking_val, peak_val]]
@@ -145,7 +134,7 @@ def chequear_mercado(token):
         # 1. Guardar Historial (Log)
         guardar_historial(client, tasa_actual)
 
-        # --- LÓGICA INTELIGENTE (TRAILING PEAK) ---
+        # --- TRAILING PEAK ---
         
         # 2. Recuperar memoria de la hora anterior
         estado = gestionar_estado(client, actualizar=False)
@@ -167,7 +156,7 @@ def chequear_mercado(token):
                 # 2A: Recién cruzamos el 30%. Empezamos a rastrear.
                 print(f"Umbral {UMBRAL_ACTIVACION}% superado. Iniciando búsqueda de pico...")
                 # Opcional: Avisar que empezó la subida, pero NO decir "comprar"
-                # enviar_telegram(f"👀 OJO: Cauciones subiendo ({tasa_actual}%). Rastreando pico...")
+                enviar_telegram(f"👀 OJO: Cauciones subiendo ({tasa_actual}%). Rastreando pico...")
                 nuevo_estado = {"tracking": True, "max_peak": tasa_actual}
             
             else:
@@ -200,7 +189,7 @@ def chequear_mercado(token):
     except Exception as e:
         print(f"Error chequeo: {e}")
         # Enviar error a Telegram para debug
-        # enviar_telegram(f"Error en Bot: {e}")
+        enviar_telegram(f"Error en Bot: {e}")
 
 if __name__ == "__main__":
     token = obtener_token()

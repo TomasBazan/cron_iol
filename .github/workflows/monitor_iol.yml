@@ -3,7 +3,7 @@ name: Monitor Cauciones IOL
 on:
   schedule:
     # (Equivale a 10:30, 11:30 ... 16:30 hora Argentina)
-    - cron: '25,45 13-19 * * 1-5'
+    - cron: '*/15 13-19 * * 1-5'
   workflow_dispatch:
 
 jobs:
