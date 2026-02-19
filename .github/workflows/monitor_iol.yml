@@ -2,8 +2,8 @@ name: Monitor Cauciones IOL
 
 on:
   schedule:
-    # (Equivale a 10:30, 11:30 ... 16:30 hora Argentina)
-    - cron: '*/15 13-19 * * 1-5'
+    # cronguru: “At minute 40 and 20 past every hour from 13 through 19 on every day-of-week from Monday through Friday.”
+    - cron: '40,20 13-19 * * 1-5'
   workflow_dispatch:
 
 jobs:
